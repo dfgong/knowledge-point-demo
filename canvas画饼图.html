@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>饼图</title>
+    <style>
+        body{text-align: center; background: #000}
+        h1{color: #fff;margin-top: 50px;}
+        #canvas{margin-top: 50px;background: #fff}
+    </style>
+    <script>
+        window.onload = function () {
+            let oCanvas = document.getElementById('canvas');
+            let gd = oCanvas.getContext('2d');
+
+            // 角度转弧度
+            function a2d(ang) {
+                return ang * Math.PI / 180;  // 计算机用的都是弧度
+            }
+
+            gd.font = '25px 微软雅黑';
+            gd.strokeText('文字怎么写上去？', 100, 50)
+            gd.fillText('hover变大分割效果怎么弄?', 100, 90)
+
+            // 数据
+            let aData = [500,639,100,256,498,111,654];
+            let sum = aData.reduce((tem, item) => tem + item); // 总和
+            let angles = aData.map(item => item/sum * 360); // 对应的角度
+            let degrees = angles.map(item => a2d(item)); // 对应的弧度
+            // let degrees = aData.map(item => item/sum * 2 * Math.PI); // 对应的弧度
+
+            // 颜色
+            let colors = ['red', 'blue', 'green', 'orange', 'gray', 'yellow', 'cyan'];
+
+            let cx = 600, cy = 300, r = 200; // 圆心位置 半径
+
+            // 画一个扇形
+            let last = Math.random() * 2 * Math.PI; // 圆弧的起点(前一个圆弧的终点) 默认定一个0-2π的随机数
+
+            degrees.forEach((degree, index) => {
+                drawSector(last, degree+last, colors[index]);
+
+                last += degree;
+            });
+
+
+            /* 
+                startDegree -- 起点时弧度
+             */
+            function drawSector (startDegree, endDegreen, color) {
+                gd.beginPath();
+
+                // 画一条斜线
+                gd.moveTo(cx,cy);
+                let x = cx + r * Math.sin(startDegree);
+                let y = cy - r * Math.cos(startDegree);
+                gd.lineTo(x, y);
+
+                // 画弧线
+                gd.arc(cx, cy, r, startDegree - a2d(90), endDegreen - a2d(90), false);  // 在arc中以x轴正方向为0度(其他都以y轴正方向为0度)
+
+                // 闭合
+                gd.closePath();
+                
+                // gd.strokeStyle = 'red'
+                // gd.stroke();
+                gd.fillStyle = color
+                gd.fill();
+            }
+
+        }
+    </script>
+</head>
+<body>
+    <h1>canvas画饼图</h1>
+    <canvas width="1200" height="600" id="canvas">
+        您的浏览器不支持canvas!
+    </canvas>
+</body>
+</html>
