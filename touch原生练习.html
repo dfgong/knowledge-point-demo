@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>touch方向锁定，上拉刷新，下拉加载</title>
+    <style>
+    *{margin: 0; padding: 0; list-style: none; font-size: 0.16rem}
+    body{overflow: hidden}
+    #wrap{background: #ccc;}
+    #content{overflow: hidden; background: #fff; transform: translateY(-50px); position: relative; z-index: 2;}
+    #banner{height: 1.5rem; width: 9999rem; overflow: hidden; transform: translateX(-3.75rem);}
+    .li{height: 1.5rem; width: 3.75rem; float: left; line-height: 1.5rem; text-align: center}
+    #load{height: 0.5rem; line-height: 0.5rem; text-align: center; position: relative; z-index: 1;}
+
+    #tap{background: #ccc; height: 0.5rem;text-align: center;line-height: 0.5rem}
+
+    #bar{width: 0.05rem; height: 0.5rem; background: #ccc; position: absolute; top: 0; right: 0; z-index: 3;transform: translateY(0)}
+    </style>
+
+    <script>
+        window.onload = function () {
+            // rem 375px -- 100px
+            document.documentElement.style.fontSize = document.documentElement.offsetWidth / 375 * 100 + 'px';
+
+            let oUl = document.querySelector('#banner');
+            let oContent = document.querySelector('#content');
+            let oLoad = document.querySelector('#load');
+            let oBar = document.querySelector('#bar');
+
+            let liW = oUl.children[0].offsetWidth;
+
+            // 用于无限滚动
+            oUl.insertBefore(oUl.children[oUl.children.length - 1].cloneNode(true), oUl.children[0]);
+            oUl.appendChild(oUl.children[1].cloneNode(true));
+
+            // translateX的值
+            let ulX = -oUl.children[0].offsetWidth;
+            let contentY = -50;
+
+            let n = 0; // 第几张
+
+            let loadDis = 40; // 加载的最小拉动距离
+
+            oUl.addEventListener('touchstart', function (ev) {
+                ev.preventDefault();
+                oUl.style.transition = '';
+                oContent.style.transition = '';
+
+                // 阈值(超过这个值就锁定方向)
+                let flag = 5;
+
+                let startx = ev.targetTouches[0].clientX;
+                let starty = ev.targetTouches[0].clientY;
+
+                // 方向
+                let dir = '';
+                let _ulX = ulX;
+                let _contentY = contentY;
+
+                function fnMove(ev) {
+                    ev.preventDefault();
+
+                    let x = ev.targetTouches[0].clientX;
+                    let y = ev.targetTouches[0].clientY;
+
+                    let diffx = x - startx;
+                    let diffy = y - starty;
+
+                    if(!dir) {  // 方向还没确定
+                        if(Math.abs(diffx) > 5) { // 锁定为x方向, 拖动banner
+                            dir = 'x';
+                        } else if(Math.abs(diffy) > 5) { // 锁定为y方向, 拖动页面
+                            dir = 'y';
+                        }
+                    } else { // 方向已确定
+                        if(dir == 'x') {  // 拖动banner
+
+                            ulX = _ulX + diffx;
+                            oUl.style.transform = `translateX(${ulX}px)`;
+
+                        } else { // 拖动页面
+
+                            if(_contentY + diffy > -50) { // 下拉刷新时
+                                contentY = _contentY + diffy/4;
+
+                                if(contentY > loadDis) {
+                                    oLoad.innerText = '松手加载'
+                                } else {
+                                    oLoad.innerText = '下拉刷新'
+                                }
+
+                                oBar.style.transform = 'translateY(0)';
+                            } else {
+                                contentY = _contentY + diffy;
+
+                                let bar_y = -(contentY+50)/(oContent.offsetHeight - document.documentElement.clientHeight) * (document.documentElement.clientHeight - oBar.offsetHeight);
+                                oBar.style.transform = `translateY(${bar_y}px)`;
+                                // 加载更多时改变长度，以及什么时候才出现
+                            }
+
+                            oContent.style.transform = `translateY(${contentY}px)`;
+
+                        }
+                    }
+
+                }
+
+                function fnEnd(ev) {
+                    oUl.removeEventListener('touchmove', fnMove, false);
+                    oUl.removeEventListener('touchend', fnEnd, false);
+
+                    if(dir == 'x') {
+                        n = Math.round(-ulX / liW);
+                        
+                        // 无限轮播(改变tanslateX的值)
+                        if(n == 0) {
+                            n = oUl.children.length - 2;
+                        } else if(n == oUl.children.length - 1) {
+                            n = 1;
+                        } else{
+                            oUl.style.transition = 'transform 0.5s ease';
+                        }
+                        
+                        ulX = -n*liW;
+                        oUl.style.transform = `translateX(${ulX}px)`;
+                    } else {
+                        if(contentY > loadDis) {
+                            oLoad.innerText = '正在加载中...';
+                            setTimeout(function () {
+                                contentY = -50;
+                                oContent.style.transition = 'transform 0.5s ease';
+                                oContent.style.transform = `translateY(${contentY}px)`;
+
+                                oLoad.innerText = '下拉刷新';
+                            }, 1500);
+                        } else {
+                            if(contentY > -50) {
+                                contentY = -50;
+                                oContent.style.transition = 'transform 0.5s ease';
+                                oContent.style.transform = `translateY(${contentY}px)`;
+                            } else {
+                                // 往上滚
+                            }
+                        }
+                    }
+                    
+                }
+
+                oUl.addEventListener('touchmove', fnMove, false);
+                oUl.addEventListener('touchend', fnEnd, false);
+
+            }, false);
+
+
+            // tap/dbltap/长按
+            let oTap = document.querySelector('#tap');
+            let timer = -1;
+            let startT = 0;
+            let lastTap = 0
+
+            oTap.addEventListener('touchstart', function () {
+                startT = Date.now();
+
+                timer = setTimeout(function () {
+                    console.log('长按')
+                }, 1500)
+            }, false);
+
+            oTap.addEventListener('touchend', function () {
+                clearTimeout(timer);
+
+                if(Date.now() - startT < 700) {
+                    console.log('tap');  
+
+                    if(Date.now() - lastTap < 300) {
+                        console.log('dbltap');  
+                    }
+
+                    lastTap = Date.now();
+
+                } else {
+                    console.log('long tap');
+                }
+
+            }, false);
+
+        }
+    </script>
+</head>
+<body>
+    <div id="wrap">
+        <div id="load">下拉刷新</div>
+        <div id="content">
+            <ul id="banner">
+                <li class="li" style="background: rgb(207, 128, 23)">banner0</li>
+                <li class="li" style="background: rgb(175, 37, 37)">banner1</li>
+                <li class="li" style="background: rgb(59, 19, 172)">banner2</li>
+                <li class="li" style="background: rgb(66, 158, 66)">banner3</li>
+                <li class="li" style="background: rgb(179, 37, 155)">banner4</li>
+            </ul>
+            <div id="elsecontent">
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+                <p>其他内容</p>
+            </div>
+            <div id="tap">tap事件anddbltap事件and长按</div>
+        </div>
+    </div>
+
+    <div id="bar"></div>
+</body>
+</html>
