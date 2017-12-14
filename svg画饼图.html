@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+    svg{width: 800px; height: 800px; border: 1px solid #000; margin-top: 50px; margin-left: 200px;}
+    </style>
+
+    <script>
+        window.onload = function () {
+            // data
+            let arr = [50,80,60,90,10,54];
+            let sum = arr.reduce((temp,item) => temp + item);
+            let colors = ['red','blue','green','yellow','gray','pink'];
+
+
+            $ = document.querySelector.bind(document);
+
+            let oSvg = $('svg');
+
+            let r1 = 200;
+            let c = [400,400]; // 圆心坐标
+
+            let lastang = 0;
+
+            arr.forEach((item,index) => {
+                let ang = item / sum * 2 * Math.PI;
+
+                draw(lastang,lastang+ang,item,colors[index]);
+
+                lastang += ang; 
+            });
+
+            function draw(start, end, item,color) {
+                let oPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+                function drowA(r) {
+                    // 圆弧的起点x1终点x2
+                    let x1 = c[0] + r * Math.cos(start);
+                    let y1 = c[1] - r * Math.sin(start);
+                    let x2 = c[0] + r * Math.cos(end);
+                    let y2 = c[1] - r * Math.sin(end);
+                    
+                    //rx ry x旋转 大弧标志 镜像标志 终点x 终点y =>(镜像标志 面对起止点连线的右边为1)
+                    let isBig = end - start > Math.PI? 1: 0;
+                    let d = `M 400,400 L ${x1},${y1} A ${r} ${r} 0 ${isBig} 0 ${x2} ${y2} Z`;
+                    oPath.setAttribute('d', d);
+                }
+
+                drowA(r1);
+                oPath.style.fill = color
+
+                oSvg.appendChild(oPath);
+
+                oPath.onmouseover = function () {
+                    let n = 0;
+                    function next() {
+                        let id = requestAnimationFrame(function () {
+                            if(n < 25) {
+                                drowA(r1+n);
+                                n++
+                                next();
+                            }else {
+                                cancelAnimationFrame(id);
+                            }
+                        })
+                    }
+                    next();
+                }
+                
+                oPath.onmouseout = function () {
+                    let n = 25;
+                    function next() {
+                        let id = requestAnimationFrame(function () {
+                            if(n > 0) {
+                                drowA(r1+n);
+                                n--
+                                next();
+                            } else {
+                                cancelAnimationFrame(id);
+                            }
+                        })
+                    }
+                    next();
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <svg></svg>
+</body>
+</html>
